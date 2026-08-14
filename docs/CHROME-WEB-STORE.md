@@ -116,7 +116,7 @@ Paste these into the "Permission justification" boxes.
 | `downloads` | To save the feedback bundle (`feedback.md`, `session.json`, and the screenshot PNGs) to the user's Downloads folder. |
 | `downloads.ui` | To briefly hide Chrome's download shelf while the bundle is written, so it doesn't pop up over the popup. Restored immediately after. |
 | `storage` | To store the user's settings and the local library of recent recordings. |
-| `offscreen` | To copy the ready-to-paste prompt to the clipboard from a background (offscreen) document after a recording is saved. |
+| `offscreen` | Two uses: (1) copy the ready-to-paste prompt to the clipboard after a recording is saved, and (2) run the microphone transcription (Web Speech) when the recorded page's `Permissions-Policy` header blocks microphone use inside embedded frames, which would otherwise silently disable the transcript. Audio is processed by Chrome's built-in speech API exactly as in the normal path and is never stored or transmitted by the extension. |
 | `alarms` | For the optional periodic "safety-net" screenshot during a recording. |
 | `webNavigation` | To take a screenshot when the recorded tab navigates to a new page, so page changes are captured. |
 | `clipboardWrite` | To copy the agent prompt (with the file path) to the clipboard when a recording finishes. |

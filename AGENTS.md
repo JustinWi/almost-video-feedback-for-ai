@@ -97,8 +97,8 @@ README's install link points at `/releases/latest`).
 | Loom import | `src/content/loom-import.js` (scrape transcript + drive player), `src/background/loom-capture.js` (seek + `captureVisibleTab` + crop), `src/background/loom-timeline.js` (pure target-time math) |
 | Storage (live + history) | `src/background/session-store.js` (IndexedDB) |
 | Output | `src/background/exporter.js`, `downloads.js`, `src/common/zip.js` |
-| Transcription + overlay + input | `src/content/*` (Web Speech runs here, **not** in the offscreen doc) |
+| Transcription + overlay + input | `src/content/*` + `src/recognizer/*` (Web Speech in an extension-origin iframe injected into the page; when a page's Permissions-Policy blocks the iframe's mic, the SW falls back to the offscreen doc). `src/background/mic-triage.js` = pure failure triage (tested). |
 | On-page drawing (canvas) | `src/content/annotate.js` (`SCF_ANNOTATE`; drawn into the page so it lands in shots). Injected in **all frames** via a 2nd `content_scripts` entry — in sub-frames it self-drives off SW messages (`ANNOTATE_READY`/`SESSION_STARTED`/`CLEAR_ANNOTATIONS`); the top frame is driven by `content.js`. |
-| Clipboard | `src/offscreen/*` |
+| Clipboard + fallback recognition | `src/offscreen/*` (clipboard writes; speech via getUserMedia + `SpeechRecognition.start(track)` when the page blocks the iframe recognizer) |
 | UI | `src/popup/*`, `src/options/*`, `src/history/*` |
 | Shared | `src/common/protocol.js`, `config.js` |

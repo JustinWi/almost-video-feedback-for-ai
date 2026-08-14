@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Almost Video Feedback",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Record spoken + visual feedback on any web app, then hand your AI agent one file of screenshots tied to what you said.",
   "homepage_url": "https://justinwi.github.io/almost-video-feedback/",
   "minimum_chrome_version": "116",

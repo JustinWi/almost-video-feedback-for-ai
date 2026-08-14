@@ -49,11 +49,13 @@
     ANNOTATE_INK_ANY: 'annotate_ink_any', // SW -> top frame: does any frame have a drawing
     CLEAR_ANNOTATIONS: 'clear_annotations', // clear drawings in every frame
 
-    // service worker <-> recognizer iframe (Web Speech at the extension origin)
+    // service worker <-> recognizer (page iframe, or the offscreen fallback)
     RECOGNIZER_STOP: 'recognizer_stop',
     TRANSCRIPT_SEGMENT: 'transcript_segment',
     TRANSCRIBE_ERROR: 'transcribe_error',
     MIC_LISTENING: 'mic_listening', // recognizer is actually capturing audio now
+    // SW -> offscreen: run recognition there when the page blocks the iframe's mic
+    OFFSCREEN_RECOGNIZE: 'offscreen_recognize',
     COPY_TO_CLIPBOARD: 'copy_to_clipboard',
     KEEPALIVE: 'keepalive',
 

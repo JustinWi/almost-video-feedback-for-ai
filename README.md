@@ -101,8 +101,15 @@ Transcription runs in a hidden **extension-origin iframe**, so you grant the mic
 extension **once** (Chrome's prompt the first time you record, or via the toolbar popup's mic meter)
 and it's reused on every site — no per-website prompts. When you start, the overlay shows a
 **"Starting microphone…"** spinner and only switches to the live **REC** state once the recognizer is
-actually capturing audio — so it never looks like it's recording before the mic is on. If recording
-shows a "microphone blocked" hint, open the toolbar popup once to grant it, then start again.
+actually capturing audio — so it never looks like it's recording before the mic is on.
+
+Some sites ship a `Permissions-Policy` header that blocks microphone use for **all** embedded
+frames, which would silently kill the iframe recognizer no matter what you've granted. When that
+happens the extension automatically moves transcription into its own offscreen document (which no
+site policy can touch) and keeps going. If transcription still can't run, the overlay says exactly
+why — mic permission missing (open the toolbar popup and pick **"Allow on every visit"**, not
+"Allow this time"), the site blocking it with the fallback unavailable, or Chrome's speech service
+being down — and screenshots keep recording either way.
 
 ## Privacy & security
 

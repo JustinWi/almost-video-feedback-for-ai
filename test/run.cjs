@@ -10,6 +10,7 @@ const exporter = require('../src/background/exporter.js');
 const loomTimeline = require('../src/background/loom-timeline.js');
 const zip = require('../src/common/zip.js');
 const protocol = require('../src/common/protocol.js');
+const micTriage = require('../src/background/mic-triage.js');
 
 let passed = 0;
 let failed = 0;
@@ -314,6 +315,65 @@ test('buildZipBytes round-trips entry names + data', () => {
   assert.strictEqual(storedName, name);
   const storedData = Buffer.from(bytes.slice(30 + nameLen, 30 + nameLen + data.length)).toString('utf8');
   assert.strictEqual(storedData, '{"a":1}');
+});
+
+// ---- mic-triage: classify why speech recognition failed ----
+
+test('mic-triage: page Permissions-Policy block -> page-blocked + offscreen fallback', () => {
+  const v = micTriage.classify({ error: 'not-allowed', src: 'iframe', policyAllowed: false, permState: 'granted' });
+  assert.deepStrictEqual(v, { kind: 'page-blocked', fallback: true });
+});
+
+test('mic-triage: policy verdict wins even with permission unknown', () => {
+  const v = micTriage.classify({ error: 'service-not-allowed', src: 'iframe', policyAllowed: false, permState: null });
+  assert.deepStrictEqual(v, { kind: 'page-blocked', fallback: true });
+});
+
+test('mic-triage: permission prompt (the "Allow this time" trap) -> permission, no fallback', () => {
+  const v = micTriage.classify({ error: 'not-allowed', src: 'iframe', policyAllowed: true, permState: 'prompt' });
+  assert.deepStrictEqual(v, { kind: 'permission', fallback: false });
+});
+
+test('mic-triage: permission denied -> permission, no fallback', () => {
+  const v = micTriage.classify({ error: 'not-allowed', src: 'iframe', policyAllowed: null, permState: 'denied' });
+  assert.deepStrictEqual(v, { kind: 'permission', fallback: false });
+});
+
+test('mic-triage: not-allowed despite granted permission -> ambiguous, fallback probes', () => {
+  const v = micTriage.classify({ error: 'not-allowed', src: 'iframe', policyAllowed: true, permState: 'granted' });
+  assert.deepStrictEqual(v, { kind: 'blocked', fallback: true });
+});
+
+test('mic-triage: not-allowed with no diagnostics at all -> fallback probes', () => {
+  const v = micTriage.classify({ error: 'not-allowed' });
+  assert.deepStrictEqual(v, { kind: 'blocked', fallback: true });
+});
+
+test('mic-triage: service-not-allowed with granted mic -> service, one fallback try', () => {
+  const v = micTriage.classify({ error: 'service-not-allowed', src: 'iframe', policyAllowed: true, permState: 'granted' });
+  assert.deepStrictEqual(v, { kind: 'service', fallback: true });
+});
+
+test('mic-triage: service-not-allowed with ungranted mic reads as permission', () => {
+  const v = micTriage.classify({ error: 'service-not-allowed', src: 'iframe', policyAllowed: true, permState: 'prompt' });
+  assert.deepStrictEqual(v, { kind: 'permission', fallback: false });
+});
+
+test('mic-triage: offscreen source never falls back further', () => {
+  const v = micTriage.classify({ error: 'not-allowed', src: 'offscreen', policyAllowed: null, permState: 'granted' });
+  assert.strictEqual(v.fallback, false);
+});
+
+test('mic-triage: hardware/no-audio failures are terminal', () => {
+  assert.deepStrictEqual(micTriage.classify({ error: 'audio-capture', src: 'iframe' }), { kind: 'no-audio', fallback: false });
+  assert.deepStrictEqual(micTriage.classify({ error: 'offscreen-no-audio', src: 'offscreen' }), { kind: 'no-audio', fallback: false });
+});
+
+test('mic-triage: transient recognizer errors classify as other, no UI reaction', () => {
+  for (const error of ['no-speech', 'network', 'aborted', 'restart-failed', 'speech-recognition-unavailable']) {
+    const v = micTriage.classify({ error, src: 'iframe' });
+    assert.deepStrictEqual(v, { kind: 'other', fallback: false }, error);
+  }
 });
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');

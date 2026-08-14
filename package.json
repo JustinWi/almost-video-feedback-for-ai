@@ -1,6 +1,6 @@
 {
   "name": "almost-video-feedback",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "private": true,
   "description": "Chrome extension that records spoken + visual feedback on a web app and hands an AI coding agent a single file of screenshots correlated to what you said and did.",
   "scripts": {

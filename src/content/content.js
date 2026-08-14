@@ -85,6 +85,22 @@
   let recIframe = null;
   let recLang = 'en-US';
   let micErrorMsg = '';
+  // 'iframe' normally; 'offscreen' when the page blocked the iframe's mic and
+  // the SW moved recognition into the extension's offscreen document (we then
+  // must NOT inject a competing iframe recognizer here)
+  let recMode = 'iframe';
+
+  // What the overlay says when transcription can't run, keyed by the SW's triage
+  // verdict. Only 'permission' is fixable by the user right now; the others
+  // reassure that screenshots are still being captured.
+  const MIC_ERROR_TEXT = {
+    permission:
+      '⚠️ Mic permission needed — click the extension icon and choose “Allow on every visit”, then restart recording.',
+    'page-blocked': '⚠️ This site blocks microphone use for extensions — recording continues without a transcript.',
+    service: '⚠️ Chrome’s speech service isn’t responding — recording continues without a transcript.',
+    'no-audio': '⚠️ No working microphone found — recording continues without a transcript.',
+    blocked: '⚠️ Microphone blocked — allow it for the extension, then restart recording.',
+  };
 
   // keepalive port so the service worker isn't evicted during quiet stretches
   let kaPort = null;
@@ -641,11 +657,15 @@
     lastScrollCaptureY = window.scrollY || 0;
     lastRouteUrl = location.href;
     recLang = (cfg.language || 'en-US');
+    recMode = msg.recMode || 'iframe';
     if (cfg.showOverlay !== false) buildOverlay();
     startAnnotate();
     startTracking();
     patchHistory();
-    if (!paused) startRecognizer(); // don't turn the mic on if we re-armed while paused
+    // don't turn the mic on if we re-armed while paused, or if recognition
+    // already runs in the offscreen document (a second recognizer would double
+    // every transcript segment)
+    if (!paused && recMode !== 'offscreen') startRecognizer();
     startKeepalive();
     send({ type: MSG.PAGE_INFO, url: location.href, title: document.title });
   }
@@ -654,6 +674,7 @@
     recording = false;
     paused = false;
     micListening = false;
+    recMode = 'iframe';
     stopRecognizer();
     stopKeepalive();
     stopTracking();
@@ -672,10 +693,13 @@
     applyMicState();
   }
 
-  function onSessionResumed() {
+  function onSessionResumed(msg) {
     paused = false;
     micListening = false; // mic restarts -> "starting microphone…" until it's live again
-    startRecognizer();
+    micErrorMsg = '';
+    if (msg && msg.recMode) recMode = msg.recMode;
+    // in offscreen mode the SW restarts the offscreen recognizer itself
+    if (recMode !== 'offscreen') startRecognizer();
     applyMicState();
   }
 
@@ -757,7 +781,7 @@
         onSessionPaused();
         break;
       case MSG.SESSION_RESUMED:
-        onSessionResumed();
+        onSessionResumed(msg);
         break;
       case MSG.SAVED_NOTICE:
         showSavedToast();
@@ -770,7 +794,7 @@
         break;
       case MSG.TRANSCRIPT_UPDATE:
         if (msg.micError) {
-          micErrorMsg = '⚠️ Microphone blocked — allow it for the extension, then restart recording.';
+          micErrorMsg = MIC_ERROR_TEXT[msg.micErrorKind] || MIC_ERROR_TEXT.blocked;
           applyMicState();
         } else if (msg.final) {
           finalText += (finalText ? ' ' : '') + msg.text;
